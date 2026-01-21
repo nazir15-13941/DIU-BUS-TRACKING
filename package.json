@@ -5,6 +5,7 @@
   "private": true,
   "description": "Real-time bus tracking system for Daffodil International University.",
   "scripts": {
-    "start": "npx serve ."
+    "start": "npx serve .",
+    "build": "echo 'No build required for zero-config React architecture'"
   }
 }

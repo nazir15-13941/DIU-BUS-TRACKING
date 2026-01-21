@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ROUTES } from '../constants';
-import { Radio, Power, Users, MapPin, AlertTriangle, CloudUpload, Activity } from 'lucide-react';
+import { Radio, Power, Users, MapPin, Activity, Cloud } from 'lucide-react';
 
 declare const L: any;
 
@@ -11,9 +11,12 @@ const DriverView: React.FC = () => {
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [occupancy, setOccupancy] = useState(30);
   const [transmissionLogs, setTransmissionLogs] = useState<{id: string, time: string, status: string}[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  
   const watchId = useRef<number | null>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const syncInterval = useRef<number | null>(null);
 
   const addLog = (status: string) => {
     const newLog = {
@@ -22,6 +25,33 @@ const DriverView: React.FC = () => {
       status
     };
     setTransmissionLogs(prev => [newLog, ...prev].slice(0, 5));
+  };
+
+  const syncToServer = async (loc: {lat: number, lng: number}) => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bus_id: "DIU-DRIVER-01", // In real app, use auth context
+          lat: loc.lat,
+          lng: loc.lng,
+          occupancy: occupancy,
+          route: selectedRoute,
+          status: 'on-time'
+        })
+      });
+      if (response.ok) {
+        addLog(`Sync: ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`);
+      } else {
+        addLog("Sync Error: HTTP " + response.status);
+      }
+    } catch (err) {
+      addLog("Network Error");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -33,10 +63,8 @@ const DriverView: React.FC = () => {
 
   const toggleTracking = () => {
     if (isTracking) {
-      if (watchId.current !== null) {
-        navigator.geolocation.clearWatch(watchId.current);
-        watchId.current = null;
-      }
+      if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+      if (syncInterval.current !== null) clearInterval(syncInterval.current);
       setIsTracking(false);
       setLocation(null);
       addLog("Tracking Stopped");
@@ -61,15 +89,19 @@ const DriverView: React.FC = () => {
               if (markerRef.current) markerRef.current.remove();
               markerRef.current = L.marker([latitude, longitude]).addTo(mapRef.current);
             }
-
-            addLog(`Sent: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
           },
           (err) => {
-            addLog(`Error: ${err.message}`);
+            addLog(`GPS Error: ${err.message}`);
             setIsTracking(false);
           },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+          { enableHighAccuracy: true }
         );
+
+        // Start periodic sync to Vercel Python Backend
+        syncInterval.current = window.setInterval(() => {
+          if (location) syncToServer(location);
+        }, 5000);
+
       } else {
         alert("Geolocation not supported.");
       }
@@ -87,36 +119,39 @@ const DriverView: React.FC = () => {
           {isTracking ? <Activity className="w-10 h-10 animate-pulse" /> : <Radio className="w-10 h-10" />}
         </div>
         
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Live GPS Feed</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">DIU Driver Console</h1>
         
-        <div className="space-y-4 mb-2">
-          <div className="text-left">
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 px-1">Route Assignment</label>
+        <div className="space-y-4 mb-2 text-left">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 px-1">Active Route</label>
             <select 
               disabled={isTracking}
               value={selectedRoute}
               onChange={(e) => setSelectedRoute(e.target.value)}
-              className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-green-500 font-semibold appearance-none transition-all cursor-pointer"
+              className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-green-500 font-semibold transition-all"
             >
-              <option value="">Choose Route...</option>
+              <option value="">Select your route...</option>
               {ROUTES.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
             </select>
           </div>
 
           <button 
             onClick={toggleTracking}
-            className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all ${isTracking ? 'bg-red-500 text-white shadow-xl shadow-red-100' : 'bg-green-600 text-white shadow-xl shadow-green-200'}`}
+            className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all ${isTracking ? 'bg-red-500 text-white shadow-xl' : 'bg-green-600 text-white shadow-xl shadow-green-200'}`}
           >
             <Power className="w-6 h-6" />
-            {isTracking ? 'STOP JOURNEY' : 'START TRACKING'}
+            {isTracking ? 'STOP BROADCAST' : 'GO ONLINE'}
           </button>
         </div>
       </div>
 
       {isTracking && (
-        <div className="bg-white h-48 rounded-3xl shadow-lg border border-gray-100 overflow-hidden relative">
+        <div className="bg-white h-40 rounded-3xl shadow-lg border border-gray-100 overflow-hidden relative">
           <div id="driver-map" className="w-full h-full"></div>
-          <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-full text-[10px] font-bold shadow-sm z-[1000]">Live Map View</div>
+          <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold shadow-sm z-[1000] flex items-center gap-2">
+            <div className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-blue-500 animate-ping' : 'bg-green-500'}`}></div>
+            {isSyncing ? 'SYNCING...' : 'GPS ACTIVE'}
+          </div>
         </div>
       )}
 
@@ -135,31 +170,29 @@ const DriverView: React.FC = () => {
 
         <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-50 flex flex-col">
           <div className="flex items-center gap-2 text-blue-600 mb-4">
-            <MapPin className="w-5 h-5" />
-            <span className="font-bold text-sm">Signal</span>
+            <Cloud className="w-5 h-5" />
+            <span className="font-bold text-sm">Status</span>
           </div>
           <div className="flex-1 flex flex-col justify-center">
-            {location ? (
-              <p className="text-xs font-bold text-gray-800 leading-tight">{location.lat.toFixed(4)} N, {location.lng.toFixed(4)} E</p>
-            ) : (
-              <p className="text-xs text-gray-400 font-medium tracking-tighter">Waiting for GPS...</p>
-            )}
+            <p className={`text-xs font-bold ${isTracking ? 'text-green-600' : 'text-gray-400'}`}>
+              {isTracking ? 'Broadcasting Live' : 'Ready to Start'}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-900 rounded-3xl p-6 shadow-2xl relative">
-        <h3 className="text-white font-bold text-xs mb-4 flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${isTracking ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`}></div>
-          Transmission Logs (Python Backend)
+      <div className="bg-gray-900 rounded-3xl p-6 shadow-2xl">
+        <h3 className="text-white/50 font-bold text-[10px] mb-4 uppercase tracking-widest flex items-center gap-2">
+          <Activity className="w-3 h-3" /> System Logs
         </h3>
-        <div className="space-y-1 min-h-[100px]">
+        <div className="space-y-1 font-mono">
           {transmissionLogs.map((log) => (
-            <div key={log.id} className="flex justify-between text-[10px] font-mono border-b border-gray-800 pb-1">
+            <div key={log.id} className="flex justify-between text-[10px] border-b border-white/5 pb-1">
               <span className="text-gray-500">{log.time}</span>
               <span className="text-green-400">{log.status}</span>
             </div>
           ))}
+          {transmissionLogs.length === 0 && <p className="text-[10px] text-gray-600">Waiting for activity...</p>}
         </div>
       </div>
     </div>

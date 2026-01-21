@@ -46,4 +46,8 @@ export const MOCK_BUSES: BusLocation[] = [
     lat: 23.9143,
     lng: 90.3425,
     status: 'on-time',
-    lastUpdated: new Date().
+    lastUpdated: new Date().toISOString(),
+    capacity: 50,
+    occupancy: 20
+  }
+];
