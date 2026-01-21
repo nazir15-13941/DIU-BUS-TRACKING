@@ -4,6 +4,7 @@ import { BusRoute, BusLocation } from './types';
 export const DIU_GREEN = '#16a34a'; // tailwind green-600
 export const DIU_LOGO_URL = 'https://daffodilvarsity.edu.bd/images/logo.png';
 
+// Coordinates calibrated for DIU Smart City (DSC), Ashulia
 export const ROUTES: BusRoute[] = [
   { id: 'r1', name: 'Uttara - DSC', stops: ['Uttara', 'Airport', 'Abdullahpur', 'DSC'], startTime: '07:30 AM' },
   { id: 'r2', name: 'Mirpur - DSC', stops: ['Mirpur 10', 'Mirpur 1', 'Gabtoli', 'DSC'], startTime: '08:00 AM' },
@@ -18,8 +19,8 @@ export const MOCK_BUSES: BusLocation[] = [
     busNumber: 'DIU-102',
     route: 'Uttara - DSC',
     driverName: 'Mr. Rahim',
-    lat: 23.8759,
-    lng: 90.3795,
+    lat: 23.9059,
+    lng: 90.3295,
     status: 'on-time',
     lastUpdated: new Date().toISOString(),
     capacity: 50,
@@ -30,8 +31,8 @@ export const MOCK_BUSES: BusLocation[] = [
     busNumber: 'DIU-205',
     route: 'Mirpur - DSC',
     driverName: 'Mr. Karim',
-    lat: 23.8223,
-    lng: 90.3654,
+    lat: 23.8923,
+    lng: 90.3154,
     status: 'late',
     lastUpdated: new Date().toISOString(),
     capacity: 50,
@@ -42,11 +43,7 @@ export const MOCK_BUSES: BusLocation[] = [
     busNumber: 'DIU-309',
     route: 'ECB - DSC',
     driverName: 'Mr. Selim',
-    lat: 23.8243,
-    lng: 90.3925,
+    lat: 23.9143,
+    lng: 90.3425,
     status: 'on-time',
-    lastUpdated: new Date().toISOString(),
-    capacity: 50,
-    occupancy: 20
-  }
-];
+    lastUpdated: new Date().
