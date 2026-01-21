@@ -1,0 +1,7 @@
+{
+  "name": "DIU Bus Tracker",
+  "description": "A real-time bus tracking system for Daffodil International University with Student, Driver, and Admin modes.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
